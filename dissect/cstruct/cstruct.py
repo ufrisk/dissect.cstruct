@@ -1780,7 +1780,7 @@ class Compiler(object):
             return expr_read.format(reader=reader, size=None)
 
 
-def hexdump(s, palette=None, offset=0, prefix=""):
+def hexdump(s, palette=None, offset=0, prefix="", is_retstr=False):
     """Hexdump some data.
 
     Args:
@@ -1794,6 +1794,7 @@ def hexdump(s, palette=None, offset=0, prefix=""):
 
     remaining = 0
     active = None
+    retstr = ""
 
     for i in xrange(0, len(s), 16):
         vals = ""
@@ -1836,10 +1837,16 @@ def hexdump(s, palette=None, offset=0, prefix=""):
                 vals += " "
 
         chars = "".join(chars)
-        print("{}{:08x}  {:48s}  {}".format(prefix, offset + i, vals, chars))
+        line = "{}{:08x}  {:48s}  {}".format(prefix, offset + i, vals, chars)
+        if is_retstr:
+            retstr += line + "\n"
+        else:
+            print(line)
+    if is_retstr:
+        return retstr
 
 
-def dumpstruct(t, data=None, offset=0):
+def dumpstruct(t, data=None, offset=0, is_color = True, is_retstr=False):
     """Dump a structure or parsed structure instance.
 
     Prints a colorized hexdump and parsed structure output.
@@ -1849,15 +1856,26 @@ def dumpstruct(t, data=None, offset=0):
         data: Bytes to parse the Structure on, if t is not a parsed Instance.
         offset: Byte offset of the hexdump.
     """
-    colors = [
-        (COLOR_RED, COLOR_BG_RED),
-        (COLOR_GREEN, COLOR_BG_GREEN),
-        (COLOR_YELLOW, COLOR_BG_YELLOW),
-        (COLOR_BLUE, COLOR_BG_BLUE),
-        (COLOR_PURPLE, COLOR_BG_PURPLE),
-        (COLOR_CYAN, COLOR_BG_CYAN),
-        (COLOR_WHITE, COLOR_BG_WHITE),
-    ]
+    if is_color:
+        colors = [
+            (COLOR_RED, COLOR_BG_RED),
+            (COLOR_GREEN, COLOR_BG_GREEN),
+            (COLOR_YELLOW, COLOR_BG_YELLOW),
+            (COLOR_BLUE, COLOR_BG_BLUE),
+            (COLOR_PURPLE, COLOR_BG_PURPLE),
+            (COLOR_CYAN, COLOR_BG_CYAN),
+            (COLOR_WHITE, COLOR_BG_WHITE),
+        ]
+    else:
+        colors = [
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+        ]
 
     if isinstance(t, Instance):
         g = t
@@ -1886,9 +1904,15 @@ def dumpstruct(t, data=None, offset=0):
             if '\n' in v:
                 v = v.replace('\n', '\n{}'.format(' ' * (len(field.name) + 4)))
 
-        out += "- {}{}{}: {}\n".format(fg, field.name, COLOR_NORMAL, v)
+        out += "- {}{}{}: {}\n".format(fg, field.name, COLOR_NORMAL if is_color else '', v)
 
+    if is_retstr:
+        retstr = "\n"
+        retstr += hexdump(data, palette if is_color else None, offset=offset, is_retstr=True)
+        retstr += "\n"
+        retstr += out
+        return retstr
     print()
-    hexdump(data, palette, offset=offset)
+    hexdump(data, palette if is_color else None, offset=offset)
     print()
     print(out)
